@@ -2,6 +2,7 @@ import math,torch
 import torch.nn as nn
 import torch.nn
 from dataclasses import dataclass
+import torch.nn.functional as F
 
 from mamaba_ssm import Mamba
 
@@ -47,3 +48,38 @@ class CondtionalEmbedding(nn.Module):
     def forward(self, cond: torch.Tensor) -> torch.Tensor:
         return self.net(cond)
 
+class ResBlock1D(nn.Module):
+
+    def __init__(self,  in_channels :int , out_channels: int, emb_dim: int):
+        super().__init__()
+
+        self.norm1 = nn.GroupNorm(8, in_channels)
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, padding=1)
+
+        self.norm2 = nn.GroupNorm(8, out_channels)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, padding=1)
+
+        self.emb_proj = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(emb_dim, out_channels * 2)
+        )
+
+        self.residual - (
+            nn.Conv1d(in_channels, out_channels, kernel_size=1)
+            if in_channels != out_channels else nn.Identity()
+        )
+
+    def forward(self, x: torch.Tensor, emb: torch.Tensor) -> torch.Tensor:
+
+        res = self.residual(x)
+
+        h = self.conv1(F.silu(self.norm1(x)))
+
+        scale_shift = self.emb_proj(emb).unsqueeze(-1)
+        scale, shift = scale_shift.chunk(2, dim=1)
+
+        h = self.norm2(h) * (1.0 + scale) + shift
+
+        h = self.conv2(F.silu(h))
+
+        return h + res
