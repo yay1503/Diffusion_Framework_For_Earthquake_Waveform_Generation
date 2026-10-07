@@ -64,7 +64,7 @@ class ResBlock1D(nn.Module):
             nn.Linear(emb_dim, out_channels * 2)
         )
 
-        self.residual - (
+        self.residual = (
             nn.Conv1d(in_channels, out_channels, kernel_size=1)
             if in_channels != out_channels else nn.Identity()
         )
