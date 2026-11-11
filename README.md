@@ -173,55 +173,6 @@ The training loop will:
 4. Evaluate on validation data each epoch
 5. Save weights to `mamba_diffusion_weights.pth`
 
-### Generation (Inference)
-
-After training, generate synthetic waveforms conditioned on metadata:
-
-```python
-import torch
-from model import DiffusionModelConfig, HybridUMambaDiffusion
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Load trained model
-config = DiffusionModelConfig(in_channels=3, cond_channels=7, hidden_channels=128)
-model = HybridUMambaDiffusion(config).to(device)
-model.load_state_dict(torch.load("mamba_diffusion_weights.pth", map_location=device))
-
-# Define conditioning: [magnitude, depth, distance, ...]
-condition = torch.tensor([[6.5, 10.0, 50.0, 0.1, 0.2, 0.3, 0.4]]).to(device)
-
-# Generate via reverse diffusion (test.py handles the full loop)
-python test.py
-```
-
-Or use the generation function directly:
-
-```python
-from test import testing_model
-from scheduler import DDPMScheduler
-
-scheduler = DDPMScheduler(num_timesteps=1000, device=device)
-generated = testing_model(model, scheduler, [condition], seq_length=256, device=device)
-# generated.shape → (1, 3, 256) — one 3-channel seismogram
-```
-
----
-
-## Project Structure
-
-```
-seismogen/
-├── model.py             # Core architecture: U-Net + BiMamba diffusion model
-├── train.py             # Training & validation loop with DDPM scheduling
-├── test.py              # Inference: iterative reverse-diffusion generation
-├── scheduler.py         # DDPM noise scheduler (add_noise, step)
-├── main.ipynb           # Jupyter notebook for experimentation
-├── requirements.txt     # Python dependencies
-└── .gitignore
-```
-
----
 
 ## License
 
